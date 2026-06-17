@@ -28,10 +28,13 @@ export default function ChatInterface({ mode }: ChatInterfaceProps) {
   // Load initial messages from localStorage
   const [initialMessages, setInitialMessages] = useState<UIMessage[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(`chat-${mode.id}`);
+      const savedConvId = localStorage.getItem(`chat-${mode.id}-id`);
+      
       if (saved) {
         try {
           setInitialMessages(JSON.parse(saved));
@@ -39,14 +42,23 @@ export default function ChatInterface({ mode }: ChatInterfaceProps) {
           setInitialMessages([]);
         }
       }
+      
+      if (savedConvId) {
+        setConversationId(savedConvId);
+      } else {
+        const newId = crypto.randomUUID();
+        setConversationId(newId);
+        localStorage.setItem(`chat-${mode.id}-id`, newId);
+      }
+      
       setHydrated(true);
     }
   }, [mode.id]);
 
   const transport = useMemo(() => new DefaultChatTransport({
     api: '/api/chat',
-    body: { mode: mode.id },
-  }), [mode.id]);
+    body: { mode: mode.id, conversationId },
+  }), [mode.id, conversationId]);
 
   const {
     messages,
@@ -82,9 +94,12 @@ export default function ChatInterface({ mode }: ChatInterfaceProps) {
   }, [isLoading]);
 
   const handleClear = () => {
-    if (window.confirm('Clear this conversation? This cannot be undone.')) {
+    if (window.confirm('Clear this conversation? This cannot be undone locally.')) {
       setMessages([]);
       localStorage.removeItem(`chat-${mode.id}`);
+      const newId = crypto.randomUUID();
+      setConversationId(newId);
+      localStorage.setItem(`chat-${mode.id}-id`, newId);
     }
   };
 

@@ -2,6 +2,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, convertToModelMessages, UIMessage } from 'ai';
 import { SYSTEM_PROMPTS } from '@/lib/prompts';
 import { TrainingMode } from '@/lib/types';
+import { prisma } from '@/lib/prisma';
 
 const minimax = createOpenAI({
   apiKey: process.env.MINIMAX_API_KEY || '',
@@ -9,7 +10,7 @@ const minimax = createOpenAI({
 });
 
 export async function POST(req: Request) {
-  const { messages, mode } = await req.json();
+  const { messages, mode, conversationId } = await req.json();
 
   const validModes: TrainingMode[] = ['conversation', 'grammar', 'vocabulary', 'scenarios', 'writing'];
   
@@ -24,18 +25,54 @@ export async function POST(req: Request) {
   const modelName = process.env.MINIMAX_MODEL || 'MiniMax-M3';
 
   try {
-    // Convert UIMessage[] (from client) to ModelMessage[] (for AI SDK)
+    let currentConversationId = conversationId;
+
+    if (!currentConversationId) {
+      const conversation = await prisma.conversation.create({
+        data: {
+          mode,
+          title: 'New Conversation',
+        },
+      });
+      currentConversationId = conversation.id;
+    }
+
+    const latestMessage = messages[messages.length - 1];
+
+    if (latestMessage && latestMessage.role === 'user') {
+      await prisma.message.create({
+        data: {
+          conversationId: currentConversationId,
+          role: 'user',
+          content: latestMessage.content,
+        },
+      });
+    }
+
     const modelMessages = await convertToModelMessages(messages as UIMessage[]);
 
     const result = streamText({
       model: minimax(modelName),
       system: systemPrompt,
       messages: modelMessages,
+      onFinish: async ({ text }) => {
+        await prisma.message.create({
+          data: {
+            conversationId: currentConversationId,
+            role: 'assistant',
+            content: text,
+          },
+        });
+      },
     });
 
-    return result.toUIMessageStreamResponse();
+    return result.toDataStreamResponse({
+      headers: {
+        'x-conversation-id': currentConversationId,
+      },
+    });
   } catch (error) {
-    console.error('Minimax API error:', error);
+    console.error('API error:', error);
     return new Response(
       JSON.stringify({ error: 'Failed to get response from AI' }),
       {
