@@ -1,5 +1,5 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { streamText, convertToModelMessages, validateUIMessages } from 'ai';
+import { streamText, convertToModelMessages, validateUIMessages, wrapLanguageModel, extractReasoningMiddleware } from 'ai';
 import { SYSTEM_PROMPTS } from '@/lib/prompts';
 import { MODES, TrainingMode } from '@/lib/types';
 import { prisma } from '@/lib/prisma';
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
           role: 'user', content: latest.parts.filter(p => p.type === 'text').map(p => p.text).join('') } });
     }
     const result = streamText({
-      model: provider.chat(process.env.MINIMAX_MODEL || process.env.MiniMax_MODEL || 'MiniMax-M3'),
+      model: wrapLanguageModel({ model: provider.chat(process.env.MINIMAX_MODEL || process.env.MiniMax_MODEL || 'MiniMax-M3'), middleware: extractReasoningMiddleware({ tagName: 'think' }) }),
       system: SYSTEM_PROMPTS[body.mode as TrainingMode] + guidance,
       messages: await convertToModelMessages(messages),
       onFinish: async ({ text }) => {
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
         catch { console.error('Could not save assistant message'); }
       },
     });
-    return result.toUIMessageStreamResponse({
+    return result.toUIMessageStreamResponse({ sendReasoning: false,
       onError: () => 'The AI service could not reply. Try again shortly; guided lessons remain available.',
     });
   } catch {
@@ -59,3 +59,4 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Chat is temporarily unavailable. Please retry. Guided lessons still work.' }, { status: 503 });
   }
 }
+
