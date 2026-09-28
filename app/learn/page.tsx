@@ -42,7 +42,10 @@ export default function LearnPage() {
   }
   function exportProgress() {
     const url = URL.createObjectURL(new Blob([JSON.stringify(progress)], { type: 'application/json' }));
-    const a = document.createElement('a'); a.href = url; a.download = 'tagalog-progress.json'; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement('a'); a.href = url; a.download = 'tagalog-progress.json';
+    document.body.append(a); a.click(); a.remove();
+    // Safari may consume the download URL after the click handler returns.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   if (!progress) return <main className="course"><Link href="/">← Home</Link><p role="status">{error || 'Loading your lesson…'}</p></main>;
   const lesson = lessons.find(l => l.id === progress.active?.id) || lessons.find(l => !progress.completed.includes(l.id)) || lessons[0];

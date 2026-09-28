@@ -35,6 +35,28 @@ function Chat({ mode, session }: { mode: ModeConfig; session: Session }) {
   const [conversationId, setConversationId] = useState(session.id);
   const [storageError, setStorageError] = useState('');
   const end = useRef<HTMLDivElement>(null);
+  const container = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const element = container.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    function fitKeyboard() {
+      if (!element || !viewport) return;
+      // Follow the visible screen when Safari opens the keyboard; preserve pinch zoom.
+      if (viewport.scale !== 1) return;
+      element.style.setProperty('--chat-height', `${viewport.height}px`);
+      element.style.setProperty('--chat-top', `${viewport.offsetTop}px`);
+    }
+    fitKeyboard();
+    viewport?.addEventListener('resize', fitKeyboard);
+    viewport?.addEventListener('scroll', fitKeyboard);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      viewport?.removeEventListener('resize', fitKeyboard);
+      viewport?.removeEventListener('scroll', fitKeyboard);
+    };
+  }, []);
   const lesson = lessons.find(l => l.id === session.lessonId);
   const transport = useMemo(() => new DefaultChatTransport({ api: '/api/chat',
     body: { mode: mode.id, conversationId, lessonId: session.lessonId } }), [mode.id, conversationId, session.lessonId]);
@@ -61,7 +83,7 @@ function Chat({ mode, session }: { mode: ModeConfig; session: Session }) {
   }
   let message = error?.message;
   if (message) { try { message = JSON.parse(message).error || message; } catch { /* Plain-text stream error. */ } }
-  return <div className="chat-container" data-mode={mode.id}>
+  return <div ref={container} className="chat-container" data-mode={mode.id}>
     <Header title={lesson ? lesson.title : mode.title} emoji={mode.emoji} showBack onClearClick={clear} onSettingsClick={() => setSettingsOpen(true)} />
     <div className="chat-messages">
       {lesson && <p><Link href="/learn">← Resume guided lesson</Link></p>}
@@ -76,7 +98,7 @@ function Chat({ mode, session }: { mode: ModeConfig; session: Session }) {
       <div ref={end} />
     </div>
     <form className="chat-input-area" onSubmit={submit}><div className="chat-input-wrapper">
-      <textarea className="chat-input" aria-label="Your message" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }} placeholder="Type your message…" disabled={busy} rows={2} />
+      <textarea className="chat-input" aria-label="Your message" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); } }} placeholder="Type your message…" disabled={busy} rows={2} />
       <button className="chat-send-btn" type="submit" disabled={busy || !input.trim()} aria-label="Send message">➤</button>
     </div></form>
     <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />

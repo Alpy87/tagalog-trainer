@@ -33,3 +33,11 @@ Playback uses an installed Filipino browser voice only, with an explicit unavail
 ## Docker
 
 Build with `docker build -t tagalog-trainer .`. Supply server variables at runtime using a protected env file. Put the app and PostgreSQL on the same user-defined Docker network so the database hostname resolves. Preserve the old container/image for rollback; no schema migration is needed for this release.
+
+## Phone and tablet support
+
+The interface uses safe-area padding, 44px minimum touch controls, 16px form text, and a keyboard-aware visual viewport for chat. Zoom remains enabled. Settings use the native modal dialog for focus management. Backup downloads delay URL cleanup for Safari.
+
+Responsive browser checks passed at 320×568, 390×844, 844×390, 768×1024, 1024×768, 375×1024, and 390×360 across home, course, and chat: no horizontal overflow and the composer remains visible. The compact viewport simulates reduced space; it is not a real iOS keyboard test. Native Safari/device testing and installed Filipino voice availability still need confirmation on the actual devices.
+
+References: [VisualViewport](https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport), [WebKit safe-area guidance](https://webkit.org/blog/7929/designing-websites-for-iphone-x/).

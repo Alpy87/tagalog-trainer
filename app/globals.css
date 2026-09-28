@@ -1843,3 +1843,55 @@ select:focus:not(:focus-visible) {
 .course .form-group { margin: 20px 0; } .course label { display: block; }
 .course .btn { white-space: normal; } .course button:disabled { opacity: .45; cursor: not-allowed; }
 .course-tools input { display: block; max-width: 220px; }
+
+/* Phone, tablet, and split-screen layouts. Keep zoom available. */
+body, .page { min-height: 100dvh; }
+.page { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.btn, .header-back, .course summary, .course nav a { min-height: 44px; }
+button, a, summary { touch-action: manipulation; }
+.btn-icon, .header-back { min-width: 44px; width: 44px; height: 44px; flex-shrink: 0; }
+.header-back { display: inline-flex; align-items: center; justify-content: center; }
+input, textarea, select { font-size: max(16px, 1rem); }
+:focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 3px; }
+.chat-container {
+  position: fixed; top: var(--chat-top, 0px); left: 0; right: 0;
+  width: 100%; max-width: 960px; margin-inline: auto;
+  height: var(--chat-height, 100dvh); max-height: none;
+  padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
+}
+.chat-container .header { flex-shrink: 0; height: auto; min-height: calc(64px + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); }
+.header-left, .header-title-group { min-width: 0; }
+.header-title-group { display: flex; align-items: center; gap: 8px; }
+.header-title { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
+.header-right { flex-shrink: 0; }
+.chat-messages { min-height: 0; overscroll-behavior-y: contain; }
+.chat-input-wrapper { display: flex; align-items: flex-end; gap: 10px; min-width: 0; }
+.chat-input { min-width: 0; flex: 1; }
+.chat-input-area { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+.message { min-width: 0; max-width: 90%; }
+.message-content { min-width: 0; overflow-wrap: anywhere; }
+.message-content table { display: block; max-width: 100%; overflow-x: auto; }
+.settings-dialog { margin: auto; color: var(--text-primary); width: min(480px, calc(100% - 32px)); max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+.settings-dialog::backdrop { background: rgb(0 0 0 / .65); backdrop-filter: blur(4px); }
+.course { padding-top: max(24px, env(safe-area-inset-top)); padding-bottom: max(40px, env(safe-area-inset-bottom)); padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); overflow-wrap: anywhere; }
+.course nav a { display: inline-flex; align-items: center; }
+.course summary { cursor: pointer; padding-block: 10px; }
+.course label:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 12px; min-height: 48px; margin-top: 16px; }
+.course input[type="checkbox"] { width: 22px; height: 22px; flex-shrink: 0; accent-color: var(--accent-gold); }
+.course .form-input { min-height: 48px; }
+.course-tools > * { max-width: 100%; }
+@media (max-width: 480px) {
+  .course-card { padding: 18px; }
+  .course-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .course-actions, .course-tools { flex-direction: column; }
+  .course-card > .btn, .course-tools > .btn { width: 100%; }
+  .chat-container .header { padding-inline: 8px; }
+  .header-left, .header-right { gap: 4px; }
+  .message { max-width: 100%; }
+  .landing-plan-cta { max-width: 100%; white-space: normal; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .chat-container .header { min-height: 48px; }
+  .chat-input-area { padding-top: 6px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+  .chat-input { height: 44px; min-height: 44px; }
+}
