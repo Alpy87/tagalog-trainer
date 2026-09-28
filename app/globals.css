@@ -1825,3 +1825,21 @@ select:focus:not(:focus-visible) {
   }
 }
 
+
+/* Guided course */
+.course { max-width: 780px; margin: auto; padding: 32px 20px 80px; line-height: 1.65; }
+.course nav, .course-actions, .course-tools { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.course h1 { font-size: clamp(1.8rem, 5vw, 2.6rem); margin: 10px 0; }
+.course h2, .course h3 { margin: 16px 0 8px; }
+.course p { margin: 12px 0; }
+.course-eyebrow { color: var(--accent-gold); font-size: .8rem; letter-spacing: .15em; }
+.course-note { font-size: .85rem; opacity: .8; }
+.course progress { width: 100%; accent-color: var(--accent-gold); }
+.course-card { border: 1px solid #39415b; background: #141a2b; border-radius: 18px; padding: 24px; margin: 24px 0; }
+.course-steps { display: flex; list-style: none; padding: 0; gap: 16px; flex-wrap: wrap; }
+.course-steps [aria-current] { color: var(--accent-gold); font-weight: 700; }
+.course dl > div { padding: 12px 0; border-bottom: 1px solid #39415b; }
+.course dt { font-weight: 700; } .course dd { margin: 4px 0; opacity: .8; }
+.course .form-group { margin: 20px 0; } .course label { display: block; }
+.course .btn { white-space: normal; } .course button:disabled { opacity: .45; cursor: not-allowed; }
+.course-tools input { display: block; max-width: 220px; }
