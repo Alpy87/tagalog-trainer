@@ -33,8 +33,8 @@ export default function HomePage() {
           <p className="landing-subtitle">
             AI-powered language training for beginners. Follow the learning plan or jump into any mode.
           </p>
-          <Link href="/plan" className="landing-plan-cta">
-            📋 View Learning Plan — Start Here
+          <Link href="/learn" className="landing-plan-cta">
+            Start Your 20-Minute Lesson
             <span className="cta-arrow">→</span>
           </Link>
         </div>

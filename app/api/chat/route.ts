@@ -1,84 +1,62 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { streamText, convertToModelMessages, UIMessage } from 'ai';
+import { streamText, convertToModelMessages, validateUIMessages, wrapLanguageModel, extractReasoningMiddleware } from 'ai';
 import { SYSTEM_PROMPTS } from '@/lib/prompts';
-import { TrainingMode } from '@/lib/types';
+import { MODES, TrainingMode } from '@/lib/types';
 import { prisma } from '@/lib/prisma';
-
-const minimax = createOpenAI({
-  apiKey: process.env.MINIMAX_API_KEY || '',
-  baseURL: process.env.MINIMAX_BASE_URL || 'https://api.minimax.io/v1',
-});
+import { lessons } from '@/lib/course';
 
 export async function POST(req: Request) {
-  const { messages, mode, conversationId } = await req.json();
-
-  const validModes: TrainingMode[] = ['conversation', 'grammar', 'vocabulary', 'scenarios', 'writing'];
-  
-  if (!mode || !validModes.includes(mode as TrainingMode)) {
-    return new Response(JSON.stringify({ error: 'Invalid mode' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  let body;
+  try { body = await req.json(); } catch {
+    return Response.json({ error: 'Invalid request.' }, { status: 400 });
   }
-
-  const systemPrompt = SYSTEM_PROMPTS[mode as TrainingMode];
-  const modelName = process.env.MINIMAX_MODEL || 'MiniMax-M3';
-
+  if (!body || typeof body.mode !== 'string' || !Object.hasOwn(MODES, body.mode) ||
+      !Array.isArray(body.messages) || body.messages.length === 0 || body.messages.length > 100 ||
+      typeof body.conversationId !== 'string' || !/^[\w-]{1,80}$/.test(body.conversationId)) {
+    return Response.json({ error: 'Invalid conversation.' }, { status: 400 });
+  }
+  let messages;
   try {
-    let currentConversationId = conversationId;
-
-    if (!currentConversationId) {
-      const conversation = await prisma.conversation.create({
-        data: {
-          mode,
-          title: 'New Conversation',
-        },
-      });
-      currentConversationId = conversation.id;
+    messages = await validateUIMessages({ messages: body.messages });
+    if (messages.some(m => !['user', 'assistant'].includes(m.role) ||
+        m.parts.some(p => p.type !== 'text' || p.text.length > 12000))) throw new Error();
+  } catch {
+    return Response.json({ error: 'Only text messages are supported.' }, { status: 400 });
+  }
+  // Support the variable names used by the existing Unraid deployment.
+  const apiKey = process.env.MINIMAX_API_KEY || process.env.MiniMax_API_KEY;
+  if (!apiKey) return Response.json({ error: 'AI is not configured on the server. Guided lessons still work.' }, { status: 503 });
+  const provider = createOpenAI({ apiKey,
+    baseURL: process.env.MINIMAX_BASE_URL || process.env.MiniMax_BASE_URL || 'https://api.minimax.io/v1' });
+  const lesson = lessons.find(l => l.id === body.lessonId);
+  const guidance = lesson ? `\nPractice this lesson only: ${JSON.stringify(lesson)}. Start the role-play immediately. Ask one question at a time. Give hints only when needed. Explain one important correction in English. Accept natural alternatives. Do not claim to save progress or assess pronunciation from text.` : '';
+  try {
+    const conversation = await prisma.conversation.upsert({
+      where: { id: body.conversationId }, update: {},
+      create: { id: body.conversationId, mode: body.mode, title: lesson?.title || 'New conversation' },
+    });
+    if (conversation.mode !== body.mode) return Response.json({ error: 'Conversation mode mismatch.' }, { status: 400 });
+    const latest = messages.at(-1)!;
+    if (latest.role === 'user') {
+      await prisma.message.upsert({ where: { id: `${conversation.id}-${latest.id}` }, update: {},
+        create: { id: `${conversation.id}-${latest.id}`, conversationId: conversation.id,
+          role: 'user', content: latest.parts.filter(p => p.type === 'text').map(p => p.text).join('') } });
     }
-
-    const latestMessage = messages[messages.length - 1];
-
-    if (latestMessage && latestMessage.role === 'user') {
-      await prisma.message.create({
-        data: {
-          conversationId: currentConversationId,
-          role: 'user',
-          content: latestMessage.content,
-        },
-      });
-    }
-
-    const modelMessages = await convertToModelMessages(messages as UIMessage[]);
-
     const result = streamText({
-      model: minimax(modelName),
-      system: systemPrompt,
-      messages: modelMessages,
+      model: wrapLanguageModel({ model: provider.chat(process.env.MINIMAX_MODEL || process.env.MiniMax_MODEL || 'MiniMax-M3'), middleware: extractReasoningMiddleware({ tagName: 'think' }) }),
+      system: SYSTEM_PROMPTS[body.mode as TrainingMode] + guidance,
+      messages: await convertToModelMessages(messages),
       onFinish: async ({ text }) => {
-        await prisma.message.create({
-          data: {
-            conversationId: currentConversationId,
-            role: 'assistant',
-            content: text,
-          },
-        });
+        try { await prisma.message.create({ data: { conversationId: conversation.id, role: 'assistant', content: text } }); }
+        catch { console.error('Could not save assistant message'); }
       },
     });
-
-    return result.toDataStreamResponse({
-      headers: {
-        'x-conversation-id': currentConversationId,
-      },
+    return result.toUIMessageStreamResponse({ sendReasoning: false,
+      onError: () => 'The AI service could not reply. Try again shortly; guided lessons remain available.',
     });
-  } catch (error) {
-    console.error('API error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Failed to get response from AI' }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+  } catch {
+    console.error('Chat request failed; check database and AI configuration');
+    return Response.json({ error: 'Chat is temporarily unavailable. Please retry. Guided lessons still work.' }, { status: 503 });
   }
 }
+

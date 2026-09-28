@@ -1,5 +1,10 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
+
+export const viewport: Viewport = {
+  width: 'device-width', initialScale: 1, viewportFit: 'cover',
+  themeColor: '#0a0e1a', interactiveWidget: 'resizes-content',
+};
 
 export const metadata: Metadata = {
   title: 'Tagalog Trainer — Learn Filipino with AI',

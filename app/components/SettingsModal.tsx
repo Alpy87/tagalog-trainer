@@ -1,122 +1,15 @@
 'use client';
-
-import React, { useState, useEffect } from 'react';
-
-interface SettingsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const [apiKey, setApiKey] = useState('');
-  const [model, setModel] = useState('MiniMax-M3');
-  const [baseUrl, setBaseUrl] = useState('https://api.minimax.io/v1');
-  const [saved, setSaved] = useState(false);
-
+import { useEffect, useRef } from 'react';
+import Link from 'next/link';
+export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setApiKey(localStorage.getItem('minimax_api_key') || '');
-      setModel(localStorage.getItem('minimax_model') || 'MiniMax-M3');
-      setBaseUrl(localStorage.getItem('minimax_base_url') || 'https://api.minimax.io/v1');
-    }
+    const element = dialog.current;
+    if (isOpen && !element?.open) element?.showModal();
+    if (!isOpen && element?.open) element.close();
   }, [isOpen]);
-
-  const handleSave = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('minimax_api_key', apiKey);
-      localStorage.setItem('minimax_model', model);
-      localStorage.setItem('minimax_base_url', baseUrl);
-    }
-    setSaved(true);
-    setTimeout(() => {
-      setSaved(false);
-      onClose();
-    }, 1000);
-  };
-
-  const handleClearAll = () => {
-    if (typeof window !== 'undefined' && window.confirm('Clear all chat history and settings? This cannot be undone.')) {
-      const keys = Object.keys(localStorage);
-      keys.forEach(key => {
-        if (key.startsWith('chat-') || key.startsWith('minimax_')) {
-          localStorage.removeItem(key);
-        }
-      });
-      setApiKey('');
-      setModel('MiniMax-M3');
-      setBaseUrl('https://api.minimax.io/v1');
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">⚙️ Settings</h2>
-          <button className="btn btn-icon" onClick={onClose} aria-label="Close">
-            ✕
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="form-group">
-            <label htmlFor="apiKey" className="form-label">
-              Minimax API Key
-            </label>
-            <input
-              id="apiKey"
-              type="password"
-              className="form-input"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your API key..."
-            />
-            <p className="form-hint">
-              Your key is stored locally in your browser and sent only to your own server.
-            </p>
-          </div>
-          <div className="form-group">
-            <label htmlFor="model" className="form-label">
-              Model
-            </label>
-            <input
-              id="model"
-              type="text"
-              className="form-input"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder="MiniMax-M3"
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="baseUrl" className="form-label">
-              API Base URL
-            </label>
-            <input
-              id="baseUrl"
-              type="text"
-              className="form-input"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              placeholder="https://api.minimax.io/v1"
-            />
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn btn-danger" onClick={handleClearAll}>
-            Clear All Data
-          </button>
-          <div className="modal-footer-right">
-            <button className="btn btn-secondary" onClick={onClose}>
-              Cancel
-            </button>
-            <button className="btn btn-primary" onClick={handleSave}>
-              {saved ? '✓ Saved!' : 'Save Settings'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return <dialog ref={dialog} className="modal settings-dialog" aria-labelledby="settings-title" onCancel={onClose} onClick={e => { if (e.target === e.currentTarget) { const r = e.currentTarget.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) onClose(); } }}>
+    <div className="modal-header"><h2 id="settings-title">Learning settings</h2><button autoFocus className="btn btn-icon" aria-label="Close settings" onClick={onClose}>✕</button></div>
+    <div className="modal-body"><p>Your course progress and chat history are saved in this browser. Export and restore course progress from the guided lesson page.</p><p>AI configuration is managed on your server. You do not need to enter an API key here.</p><p>Guided lessons and recall checks work even when the AI service is unavailable.</p><Link href="/learn" onClick={onClose}>Open today&apos;s lesson →</Link></div>
+  </dialog>;
 }
