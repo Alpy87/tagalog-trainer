@@ -19,7 +19,9 @@ export async function POST(req: Request) {
   try {
     messages = await validateUIMessages({ messages: body.messages });
     if (messages.some(m => !['user', 'assistant'].includes(m.role) ||
-        m.parts.some(p => p.type !== 'text' || p.text.length > 12000))) throw new Error();
+        (m.role === 'user' && m.parts.some(p => p.type !== 'text' || p.text.length > 12000)) ||
+        (m.role === 'assistant' && m.parts.some(p => (p.type === 'text' && p.text.length > 12000) ||
+            !['text', 'step-start', 'reasoning'].includes(p.type))))) throw new Error();
   } catch {
     return Response.json({ error: 'Only text messages are supported.' }, { status: 400 });
   }
